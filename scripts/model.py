@@ -139,4 +139,4 @@ class UNet(nn.Module):
         x = self.up4(x, x1)
         sem = self.sem_out(x)
         ins = self.ins_out(x)
-        return sem, ins
+        return ins
