@@ -8,7 +8,7 @@ from models.utils import init_weights
 
 class Dens_UNet(nn.Module):
     """Some Information about Dens_UNet"""
-    def __init__(self, in_channels=1, n_classes=2, feature_scale=2, is_deconv=True, is_batchnorm=True):
+    def __init__(self, in_channels=3, n_classes=2, feature_scale=2, is_deconv=True, is_batchnorm=True):
         super(Dens_UNet, self).__init__()
         self.lowconv = nn.Conv2d(in_channels=in_channels, out_channels=64, kernel_size=7, padding=3, bias=False)
         self.relu = nn.ReLU()

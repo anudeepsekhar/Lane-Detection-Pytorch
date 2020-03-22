@@ -36,7 +36,7 @@ def plot_classes_preds(net, images, labels):
                     color=("green" if preds[idx]==labels[idx].item() else "red"))
     return fig
 
-def plot_label_mask(model, images, labels):
+def plot_label_mask(model, images, labels, grayscale):
     '''
     Generates matplotlib Figure using a trained network, along with images
     and labels from a batch, that shows the network's top prediction.
@@ -47,7 +47,8 @@ def plot_label_mask(model, images, labels):
     images_ = images.cpu()
     grid_img = torchvision.utils.make_grid(images_, nrow=1)
     images_ = torch.squeeze(images_)
-    # images_ = images_.permute(1, 2, 0)
+    if not grayscale:
+        images_ = images_.permute(1, 2, 0)
     labels_ = labels.cpu().data.numpy()
     labels_ = np.squeeze(labels_)
     

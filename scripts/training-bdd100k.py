@@ -32,7 +32,7 @@ resize = (128,128)
 SAMPLE_SIZE = 2000
 
 # loading train data
-train_dataset = BDD100k(train_img_dir,train_label_dir,resize=resize, transform=True, grayscale=True)
+train_dataset = BDD100k(train_img_dir,train_label_dir,resize=resize, transform=True, grayscale=False)
 train_dataloader = DataLoader(train_dataset,batch_size=1, shuffle=False, pin_memory=True, num_workers=2)
 
 # loading test data
@@ -101,7 +101,7 @@ for epoch in range(10):
             # ...log a Matplotlib Figure showing the model's predictions on a
             # random mini-batch
             writer.add_figure('predictions vs. actuals',
-                            plot_label_mask(model, images, labels),
+                            plot_label_mask(model, images, labels, False),
                             global_step=epoch * len(train_dataloader) + i)
             running_loss = 0.0
 
@@ -114,6 +114,6 @@ for epoch in range(10):
     if bce_loss < best_loss:
         best_loss = bce_loss
         print('Best Model!')
-    modelname = 'model-Unet2-1.pth'
+    modelname = 'model-DenseUnet-1.pth'
     torch.save(model.state_dict(), model_dir.joinpath(modelname))
     
