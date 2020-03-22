@@ -70,7 +70,7 @@ class LanesDataset(torch.utils.data.Dataset):
 
 class BDD100k(torch.utils.data.Dataset):
     """Some Information about BDD100k"""
-    def __init__(self, img_dir, masks_dir, resize=None, channels_first=True, transform=True,train= True):
+    def __init__(self, img_dir, masks_dir, resize=None, channels_first=True, transform=True,train= True, grayscale=False):
         self.train = train
         self.img_dir = img_dir
         self.masks_dir = masks_dir
@@ -79,6 +79,7 @@ class BDD100k(torch.utils.data.Dataset):
         # print(self.label_paths)
         self.channels_first = channels_first
         self.resize = resize
+        self.grayscale = grayscale
         self.transform = transform
 
     def __len__(self):
@@ -96,11 +97,20 @@ class BDD100k(torch.utils.data.Dataset):
         img_id = label_path.split('.')[0].split('/')[-1].split('_')[0]
         img_path = self.img_dir+img_id+'.jpg'
         img = cv2.imread(img_path)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        if self.grayscale:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            # print('shape:', img.shape)
+        else:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+
         if not self.resize is None:
             img = cv2.resize(img, self.resize, interpolation=cv2.INTER_CUBIC)
         if self.channels_first:
-            img = np.transpose(img, (2, 0, 1))
+            if self.grayscale:
+                img = np.expand_dims(img, axis=0)
+            else:
+                img = np.transpose(img, (2, 0, 1))
 
         mask = cv2.imread(label_path, cv2.IMREAD_UNCHANGED)
         if self.resize is not None:

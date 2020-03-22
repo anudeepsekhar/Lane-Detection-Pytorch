@@ -47,7 +47,7 @@ def plot_label_mask(model, images, labels):
     images_ = images.cpu()
     grid_img = torchvision.utils.make_grid(images_, nrow=1)
     images_ = torch.squeeze(images_)
-    images_ = images_.permute(1, 2, 0)
+    # images_ = images_.permute(1, 2, 0)
     labels_ = labels.cpu().data.numpy()
     labels_ = np.squeeze(labels_)
     

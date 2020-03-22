@@ -13,7 +13,9 @@ from torch.autograd import Variable
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from data_utils import LanesDataset, BDD100k
-from model import UNet
+# from model import UNet
+from models.Unet import UNet
+from models.Dense_UNet import Dens_UNet
 from loss import DiscriminativeLoss, CrossEntropyLoss2d
 from torch.utils.tensorboard import SummaryWriter
 
@@ -24,13 +26,13 @@ train_label_dir = 'datasets/bdd100k/drivable_maps/labels/train/'
 val_img_dir = 'datasets/bdd100k/images/100k/val/'
 val_label_dir = 'datasets/bdd100k/drivable_maps/labels/val/'
 model_dir = 'saved_models/'
-exp_no = 1
+exp_no = 2
 logdir = 'runs/BDD100k_Experiment'+str(exp_no)
 resize = (128,128)
 SAMPLE_SIZE = 2000
 
 # loading train data
-train_dataset = BDD100k(train_img_dir,train_label_dir,resize=resize, transform=True)
+train_dataset = BDD100k(train_img_dir,train_label_dir,resize=resize, transform=True, grayscale=True)
 train_dataloader = DataLoader(train_dataset,batch_size=1, shuffle=False, pin_memory=True, num_workers=2)
 
 # loading test data
@@ -38,7 +40,7 @@ test_dataset = BDD100k(val_img_dir,val_label_dir,resize=resize, transform=True)
 test_dataloader = DataLoader(test_dataset,batch_size=1, shuffle=False, pin_memory=True, num_workers=2)
 
 #loading model
-model = UNet().cuda()
+model = Dens_UNet().cuda()
 
 # Loss Function
 criterion_bce_logits=torch.nn.BCEWithLogitsLoss()
@@ -112,6 +114,6 @@ for epoch in range(10):
     if bce_loss < best_loss:
         best_loss = bce_loss
         print('Best Model!')
-    modelname = 'model-1.pth'
+    modelname = 'model-Unet2-1.pth'
     torch.save(model.state_dict(), model_dir.joinpath(modelname))
     
