@@ -16,6 +16,7 @@ from data_utils import LanesDataset, BDD100k
 # from model import UNet
 from models.Unet import UNet
 from models.Dense_UNet import Dens_UNet
+from models.Dense_UNet2 import Dense_UNet2
 from loss import DiscriminativeLoss, CrossEntropyLoss2d
 from torch.utils.tensorboard import SummaryWriter
 
@@ -26,7 +27,7 @@ train_label_dir = 'datasets/bdd100k/drivable_maps/labels/train/'
 val_img_dir = 'datasets/bdd100k/images/100k/val/'
 val_label_dir = 'datasets/bdd100k/drivable_maps/labels/val/'
 model_dir = 'saved_models/'
-exp_no = 2
+exp_no = 3
 logdir = 'runs/BDD100k_Experiment'+str(exp_no)
 resize = (128,128)
 SAMPLE_SIZE = 2000
@@ -114,6 +115,6 @@ for epoch in range(10):
     if bce_loss < best_loss:
         best_loss = bce_loss
         print('Best Model!')
-    modelname = 'model-DenseUnet-1.pth'
+    modelname = 'model-DenseUnet2-1.pth'
     torch.save(model.state_dict(), model_dir.joinpath(modelname))
     

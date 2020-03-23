@@ -85,6 +85,39 @@ class unetUp(nn.Module):
 
         return x
 
+class convBlock(nn.Module):
+    """Some Information about convBlock"""
+    def __init__(self, in_channels, out_channels, ks=3, stride=1, padding=1):
+        super(convBlock, self).__init__()
+        self.blk = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, ks, stride, padding),
+            nn.ReLU(),
+            nn.BatchNorm2d(in_channels)
+
+        )
+
+    def forward(self, x):
+        self.blk(x)
+        return x
+
+class denseBlock2(nn.Module):
+    """Some Information about denseBlock2"""
+    def __init__(self, in_channels, out_channels, num_convs):
+        super(denseBlock2, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.net = nn.Sequential()
+        for i in range(num_convs):
+            self.net.add_module(f'conv{i}', convBlock(self.in_channels, self.out_channels))
+            self.in_channels = self.out_channels + self.in_channels
+
+    def forward(self, x):
+        for blk in self.net.children():
+            y = blk(x)
+            x = torch.cat([x, y], 1)
+
+        return x
+
 
 class denseBlock(nn.Module):
     """Some Information about denseBlock"""
