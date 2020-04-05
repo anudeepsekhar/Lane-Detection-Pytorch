@@ -16,25 +16,25 @@ class Dense_UNet2(nn.Module):
 
         filters = [64, 128, 256, 512, 1024]
 
-        self.dense_block1 = denseBlock2(32, filters[0], 3)
-        self.dense_block2 = denseBlock2(filters[0], filters[1], 3)
-        self.dense_block3 = denseBlock2(filters[1], filters[2], 3)
-        self.dense_block4 = denseBlock2(filters[2], filters[3], 3)
+        self.dense_block1 = denseBlock2(32, filters[0], 32, 3)
+        self.dense_block2 = denseBlock2(filters[0], filters[1], 32, 3)
+        self.dense_block3 = denseBlock2(filters[1], filters[2], 32, 3)
+        self.dense_block4 = denseBlock2(filters[2], filters[3], 32, 3)
 
         self.maxpool = nn.MaxPool2d(kernel_size=2) 
 
         self.bottleneck = unetConv2(filters[3], filters[4], self.is_batchnorm)
 
-        #upsampling
-        # self.up_concat4 = unetUp(filters[4], filters[3], self.is_deconv)
-        # self.up_concat3 = unetUp(filters[3], filters[2], self.is_deconv)
-        # self.up_concat2 = unetUp(filters[2], filters[1], self.is_deconv)
-        # self.up_concat1 = unetUp(filters[1], filters[0], self.is_deconv)
+        # upsampling
+        self.up_concat4 = unetUp(filters[4], filters[3], self.is_deconv)
+        self.up_concat3 = unetUp(filters[3], filters[2], self.is_deconv)
+        self.up_concat2 = unetUp(filters[2], filters[1], self.is_deconv)
+        self.up_concat1 = unetUp(filters[1], filters[0], self.is_deconv)
 
-        self.up1 = up(1024, 256)
-        self.up2 = up(512, 128)
-        self.up3 = up(256, 64)
-        self.up4 = up(128, 64)
+        # self.up1 = up(1024, 256)
+        # self.up2 = up(512, 128)
+        # self.up3 = up(256, 64)
+        # self.up4 = up(128, 64)
         # self.ins_out = outconv(64, 2)
         # final conv (without any concat)
         self.out_conv = nn.Conv2d(filters[0], n_classes, 1)
@@ -58,10 +58,10 @@ class Dense_UNet2(nn.Module):
         bn = self.bottleneck(m4)
         # print(bn.size)
 
-        up4 = self.up1(bn, d4)
-        up3 = self.up2(up4, d3)
-        up2 = self.up3(up3, d2)
-        up1 = self.up4(up2, d1)
+        up4 = self.up_concat4(bn, d4)
+        up3 = self.up_concat3(up4, d3)
+        up2 = self.up_concat2(up3, d2)
+        up1 = self.up_concat1(up2, d1)
 
         out = self.out_conv(up1)
 

@@ -43,8 +43,10 @@ def plot_label_mask(model, images, labels, grayscale):
     '''
     ins_pred_= model(images)
     ins_pred = ins_pred_.cpu().data.numpy()
+    # ins_pred = ins_pred[0]
     ins_pred = np.concatenate(ins_pred)
     images_ = images.cpu()
+    # images_ = images_[0]
     grid_img = torchvision.utils.make_grid(images_, nrow=1)
     images_ = torch.squeeze(images_)
     if not grayscale:
@@ -60,5 +62,33 @@ def plot_label_mask(model, images, labels, grayscale):
     ax[2].imshow(ins_pred[0])
     ax[3].imshow(labels_[1])
     ax[4].imshow(ins_pred[1])
+
+    return fig
+
+    def plot_label_mask2(model, images, labels, grayscale):
+        '''
+        Generates matplotlib Figure using a trained network, along with images
+        and labels from a batch, that shows the network's top prediction.
+        '''
+        ins_pred_= model(images)
+        ins_pred = ins_pred_.cpu().data.numpy()
+        ins_pred = np.concatenate(ins_pred)
+        images_ = images.cpu()
+        images_ = images_[0]
+        grid_img = torchvision.utils.make_grid(images_, nrow=1)
+        images_ = torch.squeeze(images_)
+        if not grayscale:
+            images_ = images_.permute(1, 2, 0)
+        labels_ = labels.cpu().data.numpy()
+        labels_ = np.squeeze(labels_)
+        
+        # plot the images in the batch, along with predicted and true labels
+        fig, ax = plt.subplots(1, 5, figsize=(48,12))
+
+        ax[0].imshow(images_.numpy()/255)
+        ax[1].imshow(labels_[0])
+        ax[2].imshow(ins_pred[0])
+        ax[3].imshow(labels_[1])
+        ax[4].imshow(ins_pred[1])
 
     return fig

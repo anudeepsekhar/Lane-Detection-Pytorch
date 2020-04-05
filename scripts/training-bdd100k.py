@@ -7,16 +7,19 @@ import pandas as pd
 import numpy as np
 from helper import *
 
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from pathlib import Path
 from torch.autograd import Variable
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from data_utils import LanesDataset, BDD100k
+from loss import DiceLoss, BinaryFocalLoss, FocalLoss_Ori
 # from model import UNet
-from models.Unet import UNet
-from models.Dense_UNet import Dens_UNet
-from models.Dense_UNet2 import Dense_UNet2
+# from models.Unet import UNet
+# from models.Dense_UNet import Dens_UNet
+# from models.Dense_UNet3 import Dense_UNet2
+# from models.covidNet import Net3
+from models.drivenet import driveNet
 from loss import DiscriminativeLoss, CrossEntropyLoss2d
 from torch.utils.tensorboard import SummaryWriter
 
@@ -27,13 +30,14 @@ train_label_dir = 'datasets/bdd100k/drivable_maps/labels/train/'
 val_img_dir = 'datasets/bdd100k/images/100k/val/'
 val_label_dir = 'datasets/bdd100k/drivable_maps/labels/val/'
 model_dir = 'saved_models/'
-exp_no = 3
-logdir = 'runs/BDD100k_Experiment'+str(exp_no)
-resize = (128,128)
+exp_no = 1
+logdir = 'runs3/BDD100k_Experiment'+str(exp_no)
+resize = (224,224)
 SAMPLE_SIZE = 2000
 
 # loading train data
 train_dataset = BDD100k(train_img_dir,train_label_dir,resize=resize, transform=True, grayscale=False)
+train_subset = Subset(train_dataset, range(0,5000))
 train_dataloader = DataLoader(train_dataset,batch_size=1, shuffle=False, pin_memory=True, num_workers=2)
 
 # loading test data
@@ -41,18 +45,22 @@ test_dataset = BDD100k(val_img_dir,val_label_dir,resize=resize, transform=True)
 test_dataloader = DataLoader(test_dataset,batch_size=1, shuffle=False, pin_memory=True, num_workers=2)
 
 #loading model
-model = Dens_UNet().cuda()
+model = driveNet().cuda()
+
 
 # Loss Function
 criterion_bce_logits=torch.nn.BCEWithLogitsLoss()
+criterion_disc = DiceLoss()
+criterion_focal = FocalLoss_Ori(num_class=2)
 
 
 # Optimizer
 parameters = model.parameters()
-optimizer = optim.SGD(parameters, lr=0.001, momentum=0.09, weight_decay=0.0001)
+# optimizer = optim.SGD(parameters, lr=0.001, momentum=0.09, weight_decay=0.0001)
+optimizer = optim.Adam(parameters, lr=0.001,weight_decay=0.0001)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,
                                                  mode='min',
-                                                 factor=0.1,
+                                                 factor=0.01,
                                                  patience=10,
                                                  verbose=True)
 
@@ -77,13 +85,22 @@ for epoch in range(10):
         images = Variable(images).cuda()
         labels = Variable(labels).cuda()
         model.zero_grad()
+        # label_l = labels.long()
 
         predict = model(images)
+        # print(images.shape)
+        # print(predict.shape)
         loss = 0
 
         # BCE _ins_mask
         bce_loss = criterion_bce_logits(predict,labels)
-        loss += bce_loss*3
+        loss += bce_loss
+
+        dsc_loss = criterion_disc(predict, labels)
+        loss += dsc_loss
+
+        # focal_loss = criterion_focal(predict, labels)
+        # loss += focal_loss
 
         bce_ins_losses.append(bce_loss.cpu().data.numpy())
         losses.append(loss.cpu().data.numpy())
@@ -101,6 +118,7 @@ for epoch in range(10):
 
             # ...log a Matplotlib Figure showing the model's predictions on a
             # random mini-batch
+            writer.add_graph(model, images)
             writer.add_figure('predictions vs. actuals',
                             plot_label_mask(model, images, labels, False),
                             global_step=epoch * len(train_dataloader) + i)
@@ -115,6 +133,6 @@ for epoch in range(10):
     if bce_loss < best_loss:
         best_loss = bce_loss
         print('Best Model!')
-    modelname = 'model-DenseUnet2-1.pth'
+    modelname = 'model-Unet2-1.pth'
     torch.save(model.state_dict(), model_dir.joinpath(modelname))
     

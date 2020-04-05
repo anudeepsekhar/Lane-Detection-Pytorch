@@ -84,6 +84,22 @@ class unetUp(nn.Module):
         x = self.conv(out) 
 
         return x
+class double_conv(nn.Module):
+    '''(conv => BN => ReLU) * 2'''
+    def __init__(self, in_ch, out_ch):
+        super(double_conv, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, 3, padding=1),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_ch, out_ch, 3, padding=1),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        x = self.conv(x)
+        return x
 
 class up(nn.Module):
     def __init__(self, in_ch, out_ch, bilinear=True):
@@ -126,36 +142,59 @@ class outconv(nn.Module):
 
 class convBlock(nn.Module):
     """Some Information about convBlock"""
-    def __init__(self, in_channels, out_channels, ks=3, stride=1, padding=1):
+    def __init__(self, in_channels, out_channels, ks=3, stride=1, padding=1, inter=False):
         super(convBlock, self).__init__()
-        self.blk = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, ks, stride, padding),
-            nn.ReLU(),
-            nn.BatchNorm2d(in_channels)
+        self.inter = inter
 
-        )
-
+        if self.inter: 
+            self.inter_channel = out_channels*4
+            self.bn1 = nn.BatchNorm2d(in_channels)
+            self.relu1 = nn.ReLU()
+            self.conv1 = nn.Conv2d(in_channels, self.inter_channel, kernel_size=1, stride=1, padding=0)
+            self.bn3 = nn.BatchNorm2d(self.inter_channel)
+            self.relu3 = nn.ReLU()
+            self.conv3 = nn.Conv2d(self.inter_channel, out_channels, kernel_size=3, stride=1, padding=1)
+        else:
+            self.bn = nn.BatchNorm2d(in_channels)
+            self.relu = nn.ReLU()
+            self.conv = nn.Conv2d(in_channels, out_channels, ks, stride, padding)
+        
     def forward(self, x):
-        self.blk(x)
+        if self.inter:    
+            x = self.bn1(x)
+            x = self.relu1(x)
+            x = self.conv1(x)
+            x = self.bn3(x)
+            x = self.relu3(x)
+            x = self.conv3(x)
+        else:
+            x = self.bn(x)
+            x = self.relu(x)
+            x = self.conv(x)
         return x
 
 class denseBlock2(nn.Module):
     """Some Information about denseBlock2"""
-    def __init__(self, in_channels, out_channels, num_convs):
+    def __init__(self, in_channels, out_channels, growth_rate, num_convs):
         super(denseBlock2, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.growth_rate = growth_rate
         self.net = nn.Sequential()
         for i in range(num_convs):
-            self.net.add_module(f'conv{i}', convBlock(self.in_channels, self.out_channels))
-            self.in_channels = self.out_channels + self.in_channels
+            self.net.add_module(f'conv{i}', convBlock(self.in_channels, self.growth_rate, inter=True))
+            self.in_channels = self.in_channels + self.growth_rate
+        self.out_conv = convBlock(self.in_channels, self.out_channels, ks=3)
 
     def forward(self, x):
         for blk in self.net.children():
             y = blk(x)
             x = torch.cat([x, y], 1)
-
+            # print('dense: ', x.shape)
+            # self.out_conv(x)
         return x
+
+
 
 
 class denseBlock(nn.Module):
@@ -198,3 +237,22 @@ class transitionBlock(nn.Module):
         x = self.avgpool(x)
 
         return x
+
+
+class vggUpconv(nn.Module):
+    """Some Information about vggUpconv"""
+    def __init__(self, in_ch, out_ch, upsample= True):
+        super(vggUpconv, self).__init__()
+        if upsample:
+            self.upsample = nn.Upsample(scale_factor=2, mode='bilinear')
+        else:
+            self.upsample = nn.Conv2d(in_ch, in_ch, 3, 1, 1) 
+        self.conv1 = nn.Conv2d(in_ch, out_ch, 3, 1, 1)
+
+
+    def forward(self, x1, x2):
+        x1 = self.upsample(x1)
+        x1 = self.conv1(x1)
+        sum = x1 + x2
+
+        return sum
