@@ -6,7 +6,7 @@ from torchvision import models
 from torchsummary import summary
 from models.layers import vggUpconv
 
-# vgg16 = models.vgg16(pretrained=True)
+# vgg16 = models.vgg16_bn(pretrained=True)
 # print(vgg16.features)
 # feature_extractor = vgg16.features
 # print(feature_extractor[0:5])
@@ -14,18 +14,22 @@ class driveNet(nn.Module):
     """Some Information about driveNet"""
     def __init__(self, in_channels=3, n_classes=2):
         super(driveNet, self).__init__()
-        self.vgg16 = models.vgg16(pretrained=True)
-        self.feature_extractor = self.vgg16.features
-        self.avgpool = self.vgg16.avgpool
-        for param in self.feature_extractor.parameters():
+        vgg16 = models.vgg16_bn(pretrained=True)
+        feature_extractor = vgg16.features
+        avgpool = vgg16.avgpool
+        for param in feature_extractor.parameters():
             param.requires_grad = False
-        for param in self.avgpool.parameters():
-            param.requires_grad = False
-        self.block1 = self.feature_extractor[0:5]
-        self.block2 = self.feature_extractor[5:10]
-        self.block3 = self.feature_extractor[10:17]
-        self.block4 = self.feature_extractor[17:24]
-        self.block5 = self.feature_extractor[24:]
+        for param in avgpool.parameters():
+            param.requires_grad = True
+        self.block1 = feature_extractor[0:7]
+        self.block2 = feature_extractor[7:14]
+        self.block3 = feature_extractor[14:24]
+        self.block4 = feature_extractor[24:34]
+        for param in self.block4.parameters():
+            param.requires_grad = True
+        self.block5 = feature_extractor[34:]
+        for param in self.block5.parameters():
+            param.requires_grad = True
         self.bottleneck = nn.Conv2d(512, 1024, 1, 1, 0)
         self.upsample1 = vggUpconv(1024,512, False)
         self.upsample2 = vggUpconv(512, 512)

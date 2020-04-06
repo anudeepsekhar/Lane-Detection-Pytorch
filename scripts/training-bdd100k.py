@@ -30,7 +30,7 @@ train_label_dir = 'datasets/bdd100k/drivable_maps/labels/train/'
 val_img_dir = 'datasets/bdd100k/images/100k/val/'
 val_label_dir = 'datasets/bdd100k/drivable_maps/labels/val/'
 model_dir = 'saved_models/'
-exp_no = 1
+exp_no = 3
 logdir = 'runs3/BDD100k_Experiment'+str(exp_no)
 resize = (224,224)
 SAMPLE_SIZE = 2000
@@ -56,8 +56,8 @@ criterion_focal = FocalLoss_Ori(num_class=2)
 
 # Optimizer
 parameters = model.parameters()
-# optimizer = optim.SGD(parameters, lr=0.001, momentum=0.09, weight_decay=0.0001)
-optimizer = optim.Adam(parameters, lr=0.001,weight_decay=0.0001)
+optimizer = optim.SGD(parameters, lr=0.001, momentum=0.09, weight_decay=0.0001)
+# optimizer = optim.Adam(parameters, lr=0.001,weight_decay=0.0001)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,
                                                  mode='min',
                                                  factor=0.01,
@@ -96,8 +96,8 @@ for epoch in range(10):
         bce_loss = criterion_bce_logits(predict,labels)
         loss += bce_loss
 
-        dsc_loss = criterion_disc(predict, labels)
-        loss += dsc_loss
+        # dsc_loss = criterion_disc(predict, labels)
+        # loss += dsc_loss
 
         # focal_loss = criterion_focal(predict, labels)
         # loss += focal_loss
