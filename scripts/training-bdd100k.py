@@ -19,7 +19,8 @@ from loss import DiceLoss, BinaryFocalLoss, FocalLoss_Ori
 # from models.Dense_UNet import Dens_UNet
 # from models.Dense_UNet3 import Dense_UNet2
 # from models.covidNet import Net3
-from models.drivenet import driveNet
+# from models.drivenet import driveNet
+from models.UnetResnet import UNetResnet
 from loss import DiscriminativeLoss, CrossEntropyLoss2d
 from torch.utils.tensorboard import SummaryWriter
 
@@ -30,8 +31,8 @@ train_label_dir = 'datasets/bdd100k/drivable_maps/labels/train/'
 val_img_dir = 'datasets/bdd100k/images/100k/val/'
 val_label_dir = 'datasets/bdd100k/drivable_maps/labels/val/'
 model_dir = 'saved_models/'
-exp_no = 3
-logdir = 'runs3/BDD100k_Experiment'+str(exp_no)
+exp_no = 1
+logdir = 'runs4/BDD100k_Experiment'+str(exp_no)
 resize = (224,224)
 SAMPLE_SIZE = 2000
 
@@ -45,7 +46,7 @@ test_dataset = BDD100k(val_img_dir,val_label_dir,resize=resize, transform=True)
 test_dataloader = DataLoader(test_dataset,batch_size=1, shuffle=False, pin_memory=True, num_workers=2)
 
 #loading model
-model = driveNet().cuda()
+model = UNetResnet(n_class=2).cuda()
 
 
 # Loss Function
@@ -126,13 +127,13 @@ for epoch in range(10):
 
         # break
     # disc_loss = np.mean(losses)
-    bce_loss = np.mean(bce_losses)
-    print(f'Total Loss: {loss:.4f}')
-    print(f'BinaryCrossEntropyLoss: {bce_loss:.4f}')
+    # bce_loss = np.mean(bce_losses)
+    # print(f'Total Loss: {loss:.4f}')
+    # print(f'BinaryCrossEntropyLoss: {bce_loss:.4f}')
     scheduler.step(bce_loss)
     if bce_loss < best_loss:
         best_loss = bce_loss
         print('Best Model!')
-    modelname = 'model-Unet2-1.pth'
-    torch.save(model.state_dict(), model_dir.joinpath(modelname))
+    modelname = 'model-UnetResnet.pth'
+    torch.save(model, model_dir.joinpath(modelname))
     
