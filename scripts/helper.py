@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import torchvision
 import torch
 import numpy as np
+import torch.nn.functional as F
 
 def images_to_probs(net, images):
     '''
@@ -91,4 +92,28 @@ def plot_label_mask(model, images, labels, grayscale):
         ax[3].imshow(labels_[1])
         ax[4].imshow(ins_pred[1])
 
+    return fig
+
+def plot_tu_data(images, labels, predicts):
+    images = images.cpu()
+    labels = labels.cpu()
+    predicts = predicts.cpu().detach()
+    predicts = F.sigmoid(predicts)
+    image = torch.squeeze(images[0])
+    image = image.permute(1, 2, 0)
+    label = torch.squeeze(labels[0])
+    predict = torch.squeeze(predicts[0])
+    fig = plt.figure(figsize=(30,10))
+    plt.subplot(1,5,1)
+    plt.imshow(image)
+    plt.subplot(1,5,2)
+    plt.imshow(image)
+    plt.imshow(label, cmap='jet', alpha=0.5)
+    plt.subplot(1,5,3)
+    plt.imshow(image)
+    plt.imshow(predict, cmap='jet', alpha=0.5)
+    plt.subplot(1,5,4)
+    plt.imshow(label)
+    plt.subplot(1,5,5)
+    plt.imshow(predict)
     return fig

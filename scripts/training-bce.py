@@ -15,6 +15,7 @@ from tqdm import tqdm
 from data_utils import LanesDataset
 from model import UNet
 from loss import DiscriminativeLoss, CrossEntropyLoss2d
+from torch.utils.tensorboard import SummaryWriter
 
 
 root_dir = '/home/anudeep/lane-detection/dataset/'
@@ -94,16 +95,25 @@ for epoch in range(10):
         if i%50 == 0:
             print(f'BCE Loss Ins: {bce_loss_ins.cpu().data.numpy()}')
         bce_ins_losses.append(bce_loss_ins.cpu().data.numpy())
-        # Cross Entropy Loss
-        # _, sem_labels_ce = sem_labels.max(1)
-        # ce_loss = criterion_ce(ins_predict,
-        #                            ins_labels.long())
-        # loss += ce_loss
-        # ce_losses.append(ce_loss.cpu().data.numpy()[0])
 
         loss.backward()
         optimizer.step()
         # break
+        running_loss += loss.item()
+        if i % 100 == 99:    # every 1000 mini-batches...
+
+            # ...log the running loss
+            writer.add_scalar('training loss',
+                            running_loss / 1000,
+                            epoch * len(train_dataloader) + i)
+
+            # ...log a Matplotlib Figure showing the model's predictions on a
+            # random mini-batch
+            writer.add_graph(model, images)
+            writer.add_figure('predictions vs. actuals',
+                            plot_label_mask(model, images, labels, False),
+                            global_step=epoch * len(train_dataloader) + i)
+            running_loss = 0.0
     disc_loss = np.mean(disc_losses)
     bce_loss = np.mean(bce_losses)
     print(f'DiscriminativeLoss: {disc_loss:.4f}')
@@ -114,18 +124,3 @@ for epoch in range(10):
         print('Best Model!')
         modelname = 'model-3.pth'
         torch.save(model.state_dict(), model_dir.joinpath(modelname))
-    # break
-
-# for img, bmask, imask in train_dataloader:
-
-#     print(img.shape)
-#     print(bmask.shape)
-#     print(imask.shape)
-#     sem_predict, ins_predict = model(img.cuda())
-#     print(ins_predict.shape)
-#     disc_loss = criterion_disc(ins_predict.float(),
-#                                    imask.cuda().float(),
-#                                    [4] * len(img.cuda()))
-#     print(disc_loss.cpu().data.numpy())
-
-#     break

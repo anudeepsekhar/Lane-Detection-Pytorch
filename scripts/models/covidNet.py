@@ -138,7 +138,7 @@ class Net2(nn.Module):
 
 class Net3(nn.Module):
     """Some Information about Net"""
-    def __init__(self, in_channels=1, n_classes=2, feature_scale=2, is_deconv=False, is_batchnorm=True):
+    def __init__(self, in_channels=3, n_classes=1, feature_scale=2, is_deconv=False, is_batchnorm=True):
         super(Net3, self).__init__()
         self.is_deconv = is_deconv
         self.is_batchnorm = is_batchnorm
