@@ -8,7 +8,7 @@ from models.utils import init_weights
 
 class UNet(nn.Module):
     """Some Information about UNet"""
-    def __init__(self, in_channels=1, n_classes=2, feature_scale=2, is_deconv=True, is_batchnorm=True):
+    def __init__(self, in_channels=3, n_classes=1, feature_scale=2, is_deconv=True, is_batchnorm=True):
         super(UNet, self).__init__()
         self.in_channels = in_channels
         self.feature_scale = feature_scale

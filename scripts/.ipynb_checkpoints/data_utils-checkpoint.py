@@ -164,13 +164,10 @@ class BDD100k(torch.utils.data.Dataset):
             instance_mask = torch.tensor(instance_mask).float()
         return img, np.array(instance_masks)
 
-
-
 class TU_Lane_Dataset(torch.utils.data.Dataset):
     def __init__(self, images, masks, resize=None, channels_first=True, transform=True):
         self.X = images
         self.y = masks
-        # self.label_paths = lane_masks
         self.channels_first = channels_first
         self.resize = resize
         self.transform = transform
@@ -187,7 +184,6 @@ class TU_Lane_Dataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         img = cv2.imread(self.X[index])
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        
         if not self.resize is None:
             img = cv2.resize(img, self.resize, interpolation=cv2.INTER_CUBIC)
 
@@ -195,18 +191,11 @@ class TU_Lane_Dataset(torch.utils.data.Dataset):
 
         if self.channels_first:
             img = np.transpose(img, (2, 0, 1))
-            
 
         mask = cv2.imread(self.y[index], cv2.IMREAD_GRAYSCALE)
-        mask2 = cv2.imread(self.y[index].replace('masks', 'lane_masks'), cv2.IMREAD_GRAYSCALE)
         if not self.resize is None:
             mask = cv2.resize(mask, self.resize, interpolation=cv2.INTER_NEAREST)
-            mask2 = cv2.resize(mask2, self.resize, interpolation=cv2.INTER_NEAREST)
-
         mask = mask.astype(np.uint8)
-        mask2 = mask2.astype(np.uint8)
-        # mask2 = np.transpose(img, (2, 0, 1))
-        # mask2 = np.expand_dims(mask2, axis=0)
 
         mask[mask==3] = 0
         mask[mask==4] = 0
@@ -229,13 +218,7 @@ class TU_Lane_Dataset(torch.utils.data.Dataset):
 
         points[ points>= mask.shape[0] ] = mask.shape[0] - 1
         mask[mask==2] = 1
-        # masks = []
-        # masks.append(mask)
-        # masks.append(mask2/255)
-        # cv2.imwrite('/home/anudeep/temp/mask2.jpg',mask2)
         mask = mask[np.newaxis, :, :]
-
         img = torch.tensor(img).float()
-        masks = torch.tensor(mask).float()
-        # mask2 = torch.tensor(mask2).float()
-        return img, masks #, points
+        mask = torch.tensor(mask).float()
+        return img, mask #, points

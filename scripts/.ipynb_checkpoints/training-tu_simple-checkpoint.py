@@ -21,7 +21,6 @@ from models.Unet import UNet
 # from models.covidNet import Net3
 # from models.drivenet import driveNet
 # from models.UnetResnet import UNetResnet
-from models.HGNet import HGNet
 from loss import DiscriminativeLoss, CrossEntropyLoss2d
 from torch.utils.tensorboard import SummaryWriter
 
@@ -32,8 +31,9 @@ train_label_dir = 'datasets/bdd100k/drivable_maps/labels/train/'
 val_img_dir = 'datasets/bdd100k/images/100k/val/'
 val_label_dir = 'datasets/bdd100k/drivable_maps/labels/val/'
 model_dir = 'saved_models/'
-exp_name = 'HGNet-2'
-logdir = 'runs-HGNet/TU_Experiment'+exp_name
+exp_name = 'UNET-8'
+logdir = 'runs7/TU_Experiment'+exp_name
+resize = (224,224)
 SAMPLE_SIZE = 15000
 
 def getLaneDataset():
@@ -41,7 +41,7 @@ def getLaneDataset():
     data = pd.read_json(labels_json, lines=True)
     image_files = []
     mask_files = []
-    for n, file_path in enumerate(data['raw_file'].to_numpy()):
+    for file_path in data['raw_file'].to_numpy():
         path_list = file_path.split('/')[1:-1]
         image_files += [ os.path.join('/home/anudeep/lane-detection/dataset', 'clips', *path_list, str(i)+'.jpg') for i in range(1, 21)]
         mask_files += [ os.path.join( '/home/anudeep/lane-detection/dataset', 'masks', *path_list, str(i)+'.tiff') for i in range(1,21)]
@@ -52,7 +52,7 @@ def getLaneDataset():
     
     X_train, X_val, y_train, y_val = train_test_split( 
         image_files, mask_files, test_size=0.3)
-    resize = (256, 256)
+    resize = (96, 96)
 
     return ( 
         TU_Lane_Dataset(X_train, y_train, resize=resize, transform=True),
@@ -90,8 +90,7 @@ test_dataloader = DataLoader(test_dataset,batch_size=1, shuffle=False, pin_memor
 # for param in model.block1.parameters():
 #     param.requires_grad = True
 # model = torch.load('/home/anudeep/repos/Lane-Detection-Pytorch/scripts/saved_models/model-8.pth').cuda()
-# model = UNet(n_classes=2).cuda()
-model = HGNet().cuda()
+model = UNet(n_classes=2).cuda()
 # model = torch.load('/home/anudeep/repos/Lane-Detection-Pytorch/scripts/saved_models/model-UNET-4.pth')
 
 
@@ -134,14 +133,31 @@ for epoch in range(20):
         images, labels = batched
         images = Variable(images).cuda()
         labels = Variable(labels).cuda()
+        # print(labels)
+        # break
+        # labels2 = Variable(labels2).cuda()
         model.zero_grad()
-        result1, predict = model(images)
+        # label_l = labels.long()
+
+        predict = model(images)
+        # print(predict.size())
+        # break
+        # print(images.shape)
+        # print(F.sigmoid(predict))
         loss = 0
+        # break
+
 
         # BCE _ins_mask
         predict = F.sigmoid(predict)
         bce_loss = criterion_bce(predict,labels)
         loss += 3*bce_loss
+
+        # dsc_loss = criterion_disc(predict, labels)
+        # loss += dsc_loss
+
+        # focal_loss = criterion_focal(F.sigmoid(predict), labels)
+        # loss += focal_loss
 
         loss.backward()
         optimizer.step()
@@ -158,10 +174,15 @@ for epoch in range(20):
             # random mini-batch
             writer.add_graph(model, images)
             writer.add_figure('predictions vs. actuals',
-                            plot_tu_data(images, labels, predict),
+                            plot_tu_data_2(images, labels, predict),
                             global_step=epoch * len(train_dataloader) + i)
             running_loss = 0.0
 
+        # break
+    # disc_loss = np.mean(losses)
+    # bce_loss = np.mean(bce_losses)
+    # print(f'Total Loss: {loss:.4f}')
+    # print(f'BinaryCrossEntropyLoss: {bce_loss:.4f}')
     scheduler.step(bce_loss)
     if bce_loss < best_loss:
         best_loss = bce_loss

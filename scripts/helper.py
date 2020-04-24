@@ -117,3 +117,34 @@ def plot_tu_data(images, labels, predicts):
     plt.subplot(1,5,5)
     plt.imshow(predict)
     return fig
+
+
+def plot_tu_data_2(images, labels, predicts):
+    images = images.cpu()
+    labels = labels.cpu()
+    predicts = predicts.cpu().detach()
+    predicts = F.sigmoid(predicts)
+    image = torch.squeeze(images[0])
+    image = image.permute(1, 2, 0)
+    label1 = labels[0][0]
+    label2 = labels[0][1]
+    predict1 = predicts[0][0]
+    predict2 = predicts[0][1]
+    fig = plt.figure(figsize=(30,10))
+    plt.subplot(1,5,1)
+    plt.imshow(image)
+    # plt.subplot(1,7,2)
+    # plt.imshow(image)
+    # plt.imshow(label, cmap='jet', alpha=0.5)
+    # plt.subplot(1,7,3)
+    # plt.imshow(image)
+    # plt.imshow(predict, cmap='jet', alpha=0.5)
+    plt.subplot(1,5,2)
+    plt.imshow(label1)
+    plt.subplot(1,5,3)
+    plt.imshow(predict1)
+    plt.subplot(1,5,4)
+    plt.imshow(label2)
+    plt.subplot(1,5,5)
+    plt.imshow(predict2)
+    return fig
