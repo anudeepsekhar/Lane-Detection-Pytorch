@@ -1,4 +1,5 @@
 import os
+import cv2
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -37,6 +38,7 @@ logdir = 'runs-HGNet/TU_Experiment'+exp_name
 SAMPLE_SIZE = 15000
 
 def getLaneDataset():
+    resize = (256, 256)
     labels_json = os.path.join( '/home/anudeep/lane-detection/dataset', 'label_data.json')
     data = pd.read_json(labels_json, lines=True)
     image_files = []
@@ -52,7 +54,6 @@ def getLaneDataset():
     
     X_train, X_val, y_train, y_val = train_test_split( 
         image_files, mask_files, test_size=0.3)
-    resize = (256, 256)
 
     return ( 
         TU_Lane_Dataset(X_train, y_train, resize=resize, transform=True),
@@ -98,6 +99,7 @@ model = HGNet().cuda()
 # Loss Function
 criterion_bce_logits=torch.nn.BCEWithLogitsLoss()
 criterion_bce=torch.nn.BCELoss()
+criterion_mse = nn.MSELoss()
 criterion_disc = DiceLoss()
 criterion_focal = BinaryFocalLoss()
 
@@ -131,17 +133,21 @@ for epoch in range(20):
 
     for i, batched in enumerate(tqdm(train_dataloader)):
         # with tqdm(total=len(train_dataloader.dataset), unit='img') as pbar:
-        images, labels = batched
+        images, labels, points = batched
         images = Variable(images).cuda()
         labels = Variable(labels).cuda()
+        points = Variable(points).cuda()
         model.zero_grad()
-        result1, predict = model(images)
+        result1, pred_pts, predict = model(images)
         loss = 0
 
         # BCE _ins_mask
         predict = F.sigmoid(predict)
         bce_loss = criterion_bce(predict,labels)
         loss += 3*bce_loss
+
+        mse_loss = criterion_mse(points, pred_pts)
+        loss+=mse_loss
 
         loss.backward()
         optimizer.step()

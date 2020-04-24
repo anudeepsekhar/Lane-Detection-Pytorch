@@ -185,8 +185,8 @@ class resize_layer(nn.Module):
         outputs = self.conv(inputs)
         outputs = self.re1(outputs)
         outputs = self.maxpool(outputs)
-        # outputs = self.re2(outputs)
-        # outputs = self.maxpool(outputs)
+        outputs = self.re2(outputs)
+        outputs = self.maxpool(outputs)
         outputs = self.re3(outputs)
 
         return outputs
@@ -208,7 +208,7 @@ class resize_up(nn.Module):
     def forward(self, x):
         x = self.up1(x)
         x = self.up2(x)
-        # x = self.up3(x)
+        x = self.up3(x)
         out = self.out_conv(x)
 
         return out
@@ -239,6 +239,7 @@ class hourglass_block(nn.Module):
         self.re3 = bottleneck(1, out_channels)
 
         self.out_line = Output(out_channels, 1) 
+        self.linear = Linear_block(32,32,30)
              
 
         self.out = Output(out_channels, 1)
@@ -249,6 +250,7 @@ class hourglass_block(nn.Module):
         outputs = self.layer1(inputs)
         outputs = self.re1(outputs)
         out_line = self.out_line(outputs)
+        pts = self.linear(out_line)
         out = out_line
 
         outputs = self.re2(outputs)
@@ -259,7 +261,7 @@ class hourglass_block(nn.Module):
         else:
             outputs = outputs + out
 
-        return out_line, outputs
+        return out_line, pts, outputs
 
 
 ####################################################################
@@ -283,21 +285,23 @@ class HGNet(nn.Module):
         #feature extraction
         out = self.resizing(inputs)
         # print(out.size())
-        result1, out = self.layer1(out)
-        # result2, out = self.layer2(out)
+        result1, pts1, out = self.layer1(out)
+        result2, pts2, out = self.layer2(out)
 
         output = self.resize_up(out) 
 
+        result = result1+result2
+        pts = pts1 + pts2
 
-        return result1,output
+        return result, pts, output
 
-test = torch.rand((1, 3, 256, 256))
+# test = torch.rand((1, 3, 256, 256))
 # print(test.size())
 
-# model = lane_detection_network()
+# model = HGNet()
 # model.cuda()
-# result1, result2, out = model(test.cuda())
-# print(result1.size())
-# print(result2.size())
-# print(out.size())
+# result, pts, output = model(test.cuda())
+# print(result.size())
+# print(pts.size())
+# print(output.size())
 

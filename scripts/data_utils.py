@@ -184,6 +184,18 @@ class TU_Lane_Dataset(torch.utils.data.Dataset):
         label_binary[mask] = 1
         return np.expand_dims(label_binary, axis=0)
 
+    def points_interpolation(x1, y1, num_points=15):
+        x2 = np.unique(x1)
+        y2 = []
+        for i in x2: 
+            tx = np.where(x1==i)[0] 
+            ty = np.floor(np.min([tx[0],tx[-1]]) + np.absolute((tx[0]-tx[-1])/2)) 
+            y2.append( y1[int(ty)] )
+
+        xvals = np.linspace(x2[0], x2[-1], num_points)
+        yvals = np.interp(xvals, x2, y2)
+        return xvals, yvals
+
     def __getitem__(self, index):
         img = cv2.imread(self.X[index])
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -212,6 +224,17 @@ class TU_Lane_Dataset(torch.utils.data.Dataset):
         mask[mask==4] = 0
         x1,y1 = np.where(mask==1)
         x2,y2 = np.where(mask==2)
+
+        l1_x, l1_y = self.points_interpolation(x1, y1)
+        l2_x, l2_y = self.points_interpolation(x2, y2)
+
+        pts1 = [[i,j] for i, j in zip(l1_x, l1_y)] 
+        pts2 = [[i,j] for i, j in zip(l2_x, l2_y)]
+        pts = np.array(pts1 + pts2)
+        points = pts.reshape(-1)
+        print(points)
+
+
         offset_x = 3
         offset_y = 15
 
@@ -238,4 +261,4 @@ class TU_Lane_Dataset(torch.utils.data.Dataset):
         img = torch.tensor(img).float()
         masks = torch.tensor(mask).float()
         # mask2 = torch.tensor(mask2).float()
-        return img, masks #, points
+        return img, masks, points
