@@ -6,7 +6,7 @@ import torch.optim as optim
 import pandas as pd
 import numpy as np
 from helper import *
-
+ 
 from torch.utils.data import DataLoader, Subset
 from pathlib import Path
 from torch.autograd import Variable
@@ -82,13 +82,14 @@ for epoch in range(10):
 
     for i, batched in enumerate(tqdm(train_dataloader)):
         # with tqdm(total=len(train_dataloader.dataset), unit='img') as pbar:
-        images, labels = batched
+        images, labels, points = batched
         images = Variable(images).cuda()
         labels = Variable(labels).cuda()
+        points = Variable(points).cuda()
         model.zero_grad()
         # label_l = labels.long()
 
-        predict = model(images)
+        predict, points = model(images)
         # print(images.shape)
         # print(predict.shape)
         loss = 0

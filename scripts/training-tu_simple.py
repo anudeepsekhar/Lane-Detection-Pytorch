@@ -22,7 +22,8 @@ from models.Unet import UNet
 # from models.covidNet import Net3
 # from models.drivenet import driveNet
 # from models.UnetResnet import UNetResnet
-from models.HGNet import HGNet
+# from models.HGNet2 import HGNet
+from models.UnetPoints import UNetPoints
 from loss import DiscriminativeLoss, CrossEntropyLoss2d
 from torch.utils.tensorboard import SummaryWriter
 
@@ -33,8 +34,8 @@ train_label_dir = 'datasets/bdd100k/drivable_maps/labels/train/'
 val_img_dir = 'datasets/bdd100k/images/100k/val/'
 val_label_dir = 'datasets/bdd100k/drivable_maps/labels/val/'
 model_dir = 'saved_models/'
-exp_name = 'HGNet-2'
-logdir = 'runs-HGNet/TU_Experiment'+exp_name
+exp_name = 'UNetPoints-2'
+logdir = 'runs-UNetPoints/TU_Experiment'+exp_name
 SAMPLE_SIZE = 15000
 
 def getLaneDataset():
@@ -92,7 +93,8 @@ test_dataloader = DataLoader(test_dataset,batch_size=1, shuffle=False, pin_memor
 #     param.requires_grad = True
 # model = torch.load('/home/anudeep/repos/Lane-Detection-Pytorch/scripts/saved_models/model-8.pth').cuda()
 # model = UNet(n_classes=2).cuda()
-model = HGNet().cuda()
+# model = HGNet().cuda()
+model = UNetPoints().cuda()
 # model = torch.load('/home/anudeep/repos/Lane-Detection-Pytorch/scripts/saved_models/model-UNET-4.pth')
 
 
@@ -138,16 +140,23 @@ for epoch in range(20):
         labels = Variable(labels).cuda()
         points = Variable(points).cuda()
         model.zero_grad()
-        result1, pred_pts, predict = model(images)
+        predict, pred_points = model(images)
         loss = 0
 
         # BCE _ins_mask
         predict = F.sigmoid(predict)
-        bce_loss = criterion_bce(predict,labels)
-        loss += 3*bce_loss
-
-        mse_loss = criterion_mse(points, pred_pts)
+        bce_loss = criterion_bce(predict, labels)
+        bce_loss = bce_loss
+        loss += bce_loss
+        # print(points)
+        # print(pred_points)
+        mse_loss1 = criterion_mse(pred_points, points)
+        mse_loss = mse_loss1/10
         loss+=mse_loss
+
+
+        # mse_loss2 = criterion_mse(pts2, points)
+        # loss+=mse_loss2
 
         loss.backward()
         optimizer.step()
@@ -157,21 +166,33 @@ for epoch in range(20):
 
             # ...log the running loss
             writer.add_scalar('training loss',
-                            running_loss / 1000,
+                            running_loss / 100,
                             epoch * len(train_dataloader) + i)
+            writer.add_scalar('bce loss loss',
+                            bce_loss.item(),
+                            epoch * len(train_dataloader) + i)
+            writer.add_scalar('mse loss 1',
+                            mse_loss1.item(),
+                            epoch * len(train_dataloader) + i)
+            # writer.add_scalar('mse loss 2',
+            #                 mse_loss2.item(),
+            #                 epoch * len(train_dataloader) + i)
 
             # ...log a Matplotlib Figure showing the model's predictions on a
             # random mini-batch
             writer.add_graph(model, images)
             writer.add_figure('predictions vs. actuals',
-                            plot_tu_data(images, labels, predict),
+                            plot_tu_data_3(images, labels, predict, points, pred_points),
                             global_step=epoch * len(train_dataloader) + i)
             running_loss = 0.0
 
+        if i%1000 == 999:
+            if loss.item() < best_loss:
+                best_loss = loss.item()
+                print('Best Model!')
+                modelname = 'model-'+ exp_name +'.pth'
+                torch.save(model, model_dir.joinpath(modelname))
+
     scheduler.step(bce_loss)
-    if bce_loss < best_loss:
-        best_loss = bce_loss
-        print('Best Model!')
-    modelname = 'model-'+ exp_name +'.pth'
-    torch.save(model, model_dir.joinpath(modelname))
+    
     

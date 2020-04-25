@@ -136,12 +136,7 @@ class hourglass_same(nn.Module):
     """Some Information about hourglass_same"""
     def __init__(self, in_channels, out_channels):
         super(hourglass_same, self).__init__()
-        self.conv = Conv2d_BatchNorm_Relu(in_channels, int(out_channels), 7, 3, 2) 
-        self.maxpool = nn.MaxPool2d(2, 2) 
-        self.re1 = bottleneck(int(out_channels), int(out_channels))
-        self.re2 = bottleneck(int(out_channels), int(out_channels))
-        self.re3 = bottleneck(int(out_channels), int(out_channels))
-        self.down1 = bottleneck_down(out_channels, out_channels)
+        self.down1 = bottleneck_down(in_channels, out_channels)
         self.down2 = bottleneck_down(out_channels, out_channels)
         self.down3 = bottleneck_down(out_channels, out_channels)
         self.down4 = bottleneck_down(out_channels, out_channels)
@@ -154,37 +149,26 @@ class hourglass_same(nn.Module):
         self.up4 = bottleneck_up(out_channels, out_channels)
         self.up5 = bottleneck_up(out_channels, out_channels)
 
-        self.residual1 = bottleneck_down(out_channels, out_channels)
+        self.residual1 = bottleneck_down(in_channels, out_channels)
         self.residual2 = bottleneck_down(out_channels, out_channels)
         self.residual3 = bottleneck_down(out_channels, out_channels)
         self.residual4 = bottleneck_down(out_channels, out_channels)
-        self.residual5 = bottleneck_down(out_channels, out_channels)
-        self.residual6 = bottleneck_down(out_channels, out_channels)
-
         
 
     def forward(self, inputs):
-        conv = self.conv(inputs)#128x128
-        re1 = self.re1(conv)#128x128
-        m1 = self.maxpool(re1)#64x64
-        re2 = self.re2(m1)#64x64
-        m2 = self.maxpool(re2)#32x32
-        re3 = self.re3(m2)#32x32
-        output1 = self.down1(re3)#16x16
-        output2 = self.down2(output1)#8x8
-        output3 = self.down3(output2)#4x4
-        output4 = self.down4(output3)#2x2
+        output1 = self.down1(inputs)
+        output2 = self.down2(output1)
+        output3 = self.down3(output2)
+        output4 = self.down4(output3)
 
-        outputs = self.same1(output4)#2x2
-        outputs = self.same2(outputs)#2x2
+        outputs = self.same1(output4)
+        outputs = self.same2(outputs)
 
-        outputs = self.up2(outputs + self.residual6(output3))#4x4
-        outputs = self.up3(outputs + self.residual5(output2))#8x8
-        outputs = self.up4(outputs + self.residual4(output1))#16x16
-        outputs1 = self.up5(outputs + self.residual3(re3))#32x32
-        outputs = self.up6(outputs1 + self.residual2(re1))#64x64
-        outputs = self.up7(outputs + self.residual1(re1))#128x128
-        return outputs, output1
+        outputs = self.up2(outputs + self.residual4(output3))
+        outputs = self.up3(outputs + self.residual3(output2))
+        outputs = self.up4(outputs + self.residual2(output1))
+        outputs = self.up5(outputs + self.residual1(inputs))
+        return outputs
 
 
 class resize_layer(nn.Module):
@@ -250,33 +234,73 @@ class hourglass_block(nn.Module):
     """Some Information about hourglass_block"""
     def __init__(self, in_channels, out_channels, acti=True, input_re=True):
         super(hourglass_block, self).__init__()
-        self.layer1 = hourglass_same(in_channels, out_channels)
-        self.re1 = bottleneck(out_channels, out_channels)
-        self.re2 = bottleneck(out_channels, out_channels)
-        self.re3 = bottleneck(1, out_channels)
+        self.conv = Conv2d_BatchNorm_Relu(in_channels, out_channels//2, 7, 3, 2)
+        self.maxpool = nn.MaxPool2d(2, 2)
+        self.re1 = bottleneck(out_channels//2, out_channels//2)
+        self.re2 = bottleneck(out_channels//2, out_channels//2)
+        self.re3 = bottleneck(out_channels//2, out_channels)
+        self.re4 = bottleneck(out_channels, out_channels)
+        self.re5 = bottleneck_down(out_channels, out_channels)
 
-        self.out_line = Output(out_channels, 1) 
+        self.layer1 = hourglass_same(out_channels, out_channels)
+        self.line_branch = Output(out_channels, 1) 
+        self.out_line = Output(out_channels//2, 1) 
         self.linear = Linear_block(32,32,30)
+
+        self.up2 = bottleneck_up(out_channels, out_channels)
+        self.up3 = bottleneck_up(out_channels, out_channels//2)
+        self.up4 = bottleneck_up(out_channels//2, out_channels//2)
+        self.up5 = bottleneck_up(out_channels//2, out_channels//2)
+
+        self.residual1 = bottleneck_down(in_channels, out_channels//2)
+        self.residual2 = bottleneck_down(out_channels//2, out_channels//2)
+        self.residual3 = bottleneck_down(out_channels//2, out_channels)
+        self.residual4 = bottleneck_down(out_channels, out_channels)
              
 
         self.out = Output(out_channels, 1)
 
         self.input_re =input_re
 
+
     def forward(self, inputs):
-        outputs = self.layer1(inputs)
-        outputs = self.re1(outputs)
-        out_line = self.out_line(outputs)
-        pts = self.linear(out_line)
-        out = out_line
+        output1 = self.conv(inputs)
+        output1 = self.re1(output1)
+        # print('out1: ',output1.size())#128x128x64
+        output2 = self.maxpool(output1)
+        output2 = self.re2(output2)
+        # print('out2: ',output2.size())#64x64
+        output3 = self.maxpool(output2)
+        output3 = self.re3(output3)
+        # print('out3: ',output3.size())#32x32x128
 
-        outputs = self.re2(outputs)
-        out = self.re3(out)
-
+        output4 = self.layer1(output3)
+        output4 = self.re4(output4)#32x32x128
+        line_branch = self.line_branch(output4)#32x32x1
+        pts = self.linear(line_branch)#1x60
         if self.input_re:
-            outputs = outputs + out + inputs
+            outputs = output4 + output3
         else:
-            outputs = outputs + out
+            outputs = output4 + out_line
+        outputs = self.re5(outputs)
+        # print('outputs: ', outputs.size())
+        # print('res4: ', self.residual4(output3).size())
+        # print('res3: ', self.residual3(output2).size())
+        # print('res2: ', self.residual2(output1).size())
+        # print('res1: ', self.residual1(inputs).size())
+
+
+        
+        outputs = self.up2(outputs + self.residual4(output3))
+        # print('outputs: ', outputs.size())
+        outputs = self.up3(outputs + self.residual3(output2))
+        # print('outputs: ', outputs.size())
+        outputs = self.up4(outputs + self.residual2(output1))
+        # print('outputs: ', outputs.size())
+        outputs = self.up5(outputs + self.residual1(inputs))
+        # print('outputs: ', outputs.size())
+        
+        out_line = self.out_line(outputs)
 
         return out_line, pts, outputs
 
@@ -290,25 +314,25 @@ class HGNet(nn.Module):
     def __init__(self):
         super(HGNet, self).__init__()
 
-        self.resizing = resize_layer(3, 128)
+        # self.resizing = resize_layer(3, 128)
 
         #feature extraction
-        self.layer1 = hourglass_block(128, 128)
-        self.layer2 = hourglass_block(128, 128)
-        self.conv = bottleneck(128, 512)
-        self.resize_up = resize_up(512, 1)
+        self.layer1 = hourglass_block(3, 128)
+        # self.layer2 = hourglass_block(128, 128)
+        # self.conv = bottleneck(128, 512)
+        # self.resize_up = resize_up(512, 1)
 
 
     def forward(self, inputs):
         #feature extraction
-        out = self.resizing(inputs)
+        # out = self.resizing(inputs)
         # print(out.size())
-        result1, pts1, out = self.layer1(out)
+        out_line, pts, outputs = self.layer1(inputs)
         # result2, pts2, out = self.layer2(out)
-        inter = self.conv(out)
-        output = self.resize_up(inter)         
+        # inter = self.conv(out)
+        # output = self.resize_up(inter)         
 
-        return output, pts1
+        return out_line, pts
 
 # test = torch.rand((1, 3, 256, 256))
 # print(test.size())

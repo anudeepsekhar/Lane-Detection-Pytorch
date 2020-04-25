@@ -184,7 +184,7 @@ class TU_Lane_Dataset(torch.utils.data.Dataset):
         label_binary[mask] = 1
         return np.expand_dims(label_binary, axis=0)
 
-    def points_interpolation(x1, y1, num_points=15):
+    def points_interpolation(self, x1, y1, num_points=15):
         x2 = np.unique(x1)
         y2 = []
         for i in x2: 
@@ -195,6 +195,25 @@ class TU_Lane_Dataset(torch.utils.data.Dataset):
         xvals = np.linspace(x2[0], x2[-1], num_points)
         yvals = np.interp(xvals, x2, y2)
         return xvals, yvals
+
+    def get_x(self, y, mask, l):
+        xi = np.where(mask[y,:]==l)
+        xi = xi[0]
+        xx = (xi[0]+xi[-1])/2
+        return xx
+
+    def get_pts_from_lane(self, idx, mask):
+        x,y = np.where(mask==idx)
+        y_vals = np.linspace(min(x),max(x),15)
+        y_vals = np.array(y_vals).astype(np.uint16)
+        x_vals = [self.get_x(y, mask, idx) for y in y_vals]
+        return x_vals, y_vals
+
+    def get_pts(self, mask):
+        x1, y1 = self.get_pts_from_lane(1,mask)
+        x2, y2 = self.get_pts_from_lane(2,mask)
+        pts = np.array([x1,y1,x2,y2])
+        return pts.reshape(-1)
 
     def __getitem__(self, index):
         img = cv2.imread(self.X[index])
@@ -210,18 +229,19 @@ class TU_Lane_Dataset(torch.utils.data.Dataset):
             
 
         mask = cv2.imread(self.y[index], cv2.IMREAD_GRAYSCALE)
-        mask2 = cv2.imread(self.y[index].replace('masks', 'lane_masks'), cv2.IMREAD_GRAYSCALE)
+        # mask2 = cv2.imread(self.y[index].replace('masks', 'lane_masks'), cv2.IMREAD_GRAYSCALE)
         if not self.resize is None:
             mask = cv2.resize(mask, self.resize, interpolation=cv2.INTER_NEAREST)
-            mask2 = cv2.resize(mask2, self.resize, interpolation=cv2.INTER_NEAREST)
+            # mask2 = cv2.resize(mask2, self.resize, interpolation=cv2.INTER_NEAREST)
 
         mask = mask.astype(np.uint8)
-        mask2 = mask2.astype(np.uint8)
+        # mask2 = mask2.astype(np.uint8)
         # mask2 = np.transpose(img, (2, 0, 1))
         # mask2 = np.expand_dims(mask2, axis=0)
 
         mask[mask==3] = 0
         mask[mask==4] = 0
+        # points = self.get_pts(mask)
         x1,y1 = np.where(mask==1)
         x2,y2 = np.where(mask==2)
 
@@ -232,9 +252,21 @@ class TU_Lane_Dataset(torch.utils.data.Dataset):
         pts2 = [[i,j] for i, j in zip(l2_x, l2_y)]
         pts = np.array(pts1 + pts2)
         points = pts.reshape(-1)
-        print(points)
+        # # print(points)
+        mask[mask==2] = 1
+        # masks = []
+        # masks.append(mask)
+        # masks.append(mask2/255)
+        # cv2.imwrite('/home/anudeep/temp/mask2.jpg',mask2)
+        mask = mask[np.newaxis, :, :]
 
+        img = torch.tensor(img).float()
+        masks = torch.tensor(mask).float()
+        points = torch.tensor(points).float()
+        # mask2 = torch.tensor(mask2).float()
+        return img, masks, points
 
+'''
         offset_x = 3
         offset_y = 15
 
@@ -251,14 +283,5 @@ class TU_Lane_Dataset(torch.utils.data.Dataset):
             return [], [], []
 
         points[ points>= mask.shape[0] ] = mask.shape[0] - 1
-        mask[mask==2] = 1
-        # masks = []
-        # masks.append(mask)
-        # masks.append(mask2/255)
-        # cv2.imwrite('/home/anudeep/temp/mask2.jpg',mask2)
-        mask = mask[np.newaxis, :, :]
-
-        img = torch.tensor(img).float()
-        masks = torch.tensor(mask).float()
-        # mask2 = torch.tensor(mask2).float()
-        return img, masks, points
+        '''
+        
